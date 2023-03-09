@@ -19,9 +19,12 @@ using namespace std;
 
 typedef char String[100];
 enum VERIFY {CF, TF, XF, HELP, NONE};
+enum TYPE {FILE, DIRECTORY};
 
 int parseArgs(char* argv[]);
 void helpFlag();
+void makeTarFile();
+int findType();
 
 int main(int argc, char* argv[]) {
     // PRE: Command-line arguments are used to specify how jtar will operate.
@@ -66,7 +69,8 @@ int main(int argc, char* argv[]) {
             break;
 
         case NONE:
-            cout << "invalid flag" << endl;
+            cerr << "jtar: You must specify one of the options" << endl;
+            cerr << "Try 'jtar --help' for more information." << endl;
             break;
     } 
 
@@ -89,12 +93,10 @@ int parseArgs(char* argv[]) {
 
     string flag(argv[1]);
     if (flag == "-cf") {
-        
         return CF;
     } else if (flag == "-tf") {
         return TF;
     } else if (flag == "-xf") {
-        
         return XF;
     } else if (flag == "--help") {
         return HELP;
@@ -112,4 +114,16 @@ void helpFlag() {
     cout << "\ttar -tf archive.tar\t\t# List all files in archive.tar verbosely." << endl;
     cout << "\ttar -xf archive.tar\t\t# Extract all files from archive.tar." << endl;
     cout << "Report bugs to <11013518@live.mercer.edu>.\n" << endl; 
+}
+
+void makeTarFile(int argc, char* argv[]) {
+    // PRE: "-cf" flag was passed onto the command line.
+    // POST: Makes a tar file with the passed arguments.
+
+    if (argc >= 4) {
+
+    } else {
+        cerr << "jtar: Invalid format" << endl;
+        cerr << "Try 'jtar --help for more information" << endl;
+    }
 }
