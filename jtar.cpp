@@ -20,6 +20,9 @@ using namespace std;
 typedef char String[100];
 enum VERIFY {CF, TF, XF, HELP, NONE};
 
+int parseArgs(char* argv[]);
+void helpFlag();
+
 int main(int argc, char* argv[]) {
     // PRE: Command-line arguments are used to specify how jtar will operate.
     // POST: Executes based on the flags passed on command line.
@@ -45,19 +48,27 @@ int main(int argc, char* argv[]) {
         description of the three options above, and exit.
     */
 
-    
+    switch (parseArgs(argv)) {
+        case CF:
+            cout << "cf flag" << endl;
+            break;
 
-   string helpFlag = "--help";
-   if (argv[argc - 1] == helpFlag) {
-    cout << "'jtar' saves many files together into a single tape or disk archive, and" << endl;
-    cout << "can restore individual files from the archive." << endl;
-    cout << "\nUsage: tar [OPTION]... [FILE]..." << endl;
-    cout << "\nOption Examples:" << endl;
-    cout << "\ttar -cf archive.tar foo bar\t# Create archive.tar from files foo and bar." << endl;
-    cout << "\ttar -tf archive.tar\t\t# List all files in archive.tar verbosely." << endl;
-    cout << "\ttar -xf archive.tar\t\t# Extract all files from archive.tar." << endl;
-    cout << "Report bugs to <11013518@live.mercer.edu>.\n" << endl; 
-   }
+        case TF:
+            cout << "tf flag" << endl;
+            break;
+
+        case XF:
+            cout << "xf flag" << endl;
+            break;
+
+        case HELP:
+            helpFlag();
+            break;
+
+        case NONE:
+            cout << "invalid flag" << endl;
+            break;
+    } 
 
    /* TODO: Flag errors
     •   Failure to specify one of the four options supported by jtar
@@ -70,4 +81,35 @@ int main(int argc, char* argv[]) {
 
 
     return 0;
+}
+
+int parseArgs(char* argv[]) {
+    // PRE: Flags are passed on the command line.
+    // POST: Returns an integer determining which command should be executed.
+
+    string flag(argv[1]);
+    if (flag == "-cf") {
+        
+        return CF;
+    } else if (flag == "-tf") {
+        return TF;
+    } else if (flag == "-xf") {
+        
+        return XF;
+    } else if (flag == "--help") {
+        return HELP;
+    } else {
+        return NONE;
+    }
+}
+
+void helpFlag() {
+    cout << "'jtar' saves many files together into a single tape or disk archive, and" << endl;
+    cout << "can restore individual files from the archive." << endl;
+    cout << "\nUsage: tar [OPTION]... [FILE]..." << endl;
+    cout << "\nOption Examples:" << endl;
+    cout << "\ttar -cf archive.tar foo bar\t# Create archive.tar from files foo and bar." << endl;
+    cout << "\ttar -tf archive.tar\t\t# List all files in archive.tar verbosely." << endl;
+    cout << "\ttar -xf archive.tar\t\t# Extract all files from archive.tar." << endl;
+    cout << "Report bugs to <11013518@live.mercer.edu>.\n" << endl; 
 }
