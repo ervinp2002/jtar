@@ -14,17 +14,21 @@ Implementation in C++
 #include <sys/types.h>
 #include <utime.h>
 #include <fstream>
+#include <vector>
+#include <map>
 #include "file.cpp"
 using namespace std;
 
 typedef char String[100];
 enum VERIFY {CF, TF, XF, HELP, NONE};
-enum TYPE {FILE, DIRECTORY};
+enum TYPE {REG, DIRECTORY, DNE};
 
 int parseArgs(char* argv[]);
 void helpFlag();
-void makeTarFile();
-int findType();
+void makeTarFile(int argc, char* argv[]);
+void getFileName();
+void getProtectionMode();
+void getTimestamp();
 
 int main(int argc, char* argv[]) {
     // PRE: Command-line arguments are used to specify how jtar will operate.
@@ -45,15 +49,11 @@ int main(int argc, char* argv[]) {
         tarfile. This includes making any directories that must exist to hold the files. The files thus
         created should be exactly like the original files. This means that they should have the same
         access and modification times, and the same protection modes.
-
-    •   jtar --help 
-        If the help option is present on the command line, the program should print a
-        description of the three options above, and exit.
     */
 
     switch (parseArgs(argv)) {
         case CF:
-            cout << "cf flag" << endl;
+            makeTarFile(argc, argv);
             break;
 
         case TF:
@@ -75,8 +75,6 @@ int main(int argc, char* argv[]) {
     } 
 
    /* TODO: Flag errors
-    •   Failure to specify one of the four options supported by jtar
-    •   An invalid option on the command line
     •   An invalid format. For example, the -cf option should always have an argc of at least 4,
         and the -tf and -xf options should always have an argc of at least 3.
     •   Attempting to tar a file or directory which does not exist
@@ -120,10 +118,50 @@ void makeTarFile(int argc, char* argv[]) {
     // PRE: "-cf" flag was passed onto the command line.
     // POST: Makes a tar file with the passed arguments.
 
+    map<string, int> files;
+    vector<File> tarredFiles;
+
     if (argc >= 4) {
+        // Step 1: Determine the type of each argument passed after the tar file name.
+        struct stat buf;
+        struct utimbuf timebuf;
+        for (int i = 3; i < argc; i++) {
+            lstat(argv[i], &buf);
+            string name(argv[i]);
+            if (S_ISREG(buf.st_mode)) {
+                files.insert({name, REG});
+            } else if (S_ISDIR(buf.st_mode)) {
+                files.insert({name, DIRECTORY});
+            } else {
+                cerr << "jtar: '" << argv[i] << "' does not exist" << endl;
+                return;
+            }
+        }
+
+
 
     } else {
         cerr << "jtar: Invalid format" << endl;
         cerr << "Try 'jtar --help for more information" << endl;
     }
+}
+
+void getFileName() {
+    // PRE:
+    // POST:
+
+
+}
+
+void getProtectionMode() {
+    // PRE:
+    // POST:
+
+}
+
+void getTimestamp() {
+    // PRE:
+    // POST:
+
+
 }
