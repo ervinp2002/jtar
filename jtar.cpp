@@ -21,14 +21,15 @@ using namespace std;
 
 typedef char String[100];
 enum VERIFY {CF, TF, XF, HELP, NONE};
-enum TYPE {REG, DIRECTORY, DNE};
+enum TYPE {REG, DIRECTORY};
 
 int parseArgs(char* argv[]);
-void helpFlag();
+void helpMessage();
 void makeTarFile(int argc, char* argv[]);
-void getFileName();
-void getProtectionMode();
-void getTimestamp();
+char* createFileName(string fileName);
+char* createProtectionMode(string fileName);
+char* createTimestamp(string fileName);
+char* createFileSize(string fileName);
 
 int main(int argc, char* argv[]) {
     // PRE: Command-line arguments are used to specify how jtar will operate.
@@ -65,7 +66,7 @@ int main(int argc, char* argv[]) {
             break;
 
         case HELP:
-            helpFlag();
+            helpMessage();
             break;
 
         case NONE:
@@ -77,7 +78,6 @@ int main(int argc, char* argv[]) {
    /* TODO: Flag errors
     •   An invalid format. For example, the -cf option should always have an argc of at least 4,
         and the -tf and -xf options should always have an argc of at least 3.
-    •   Attempting to tar a file or directory which does not exist
     •   Attempting to open a tar file which does not exist
     */
 
@@ -103,7 +103,10 @@ int parseArgs(char* argv[]) {
     }
 }
 
-void helpFlag() {
+void helpMessage() {
+    // PRE: "--help" was passed on the command line.
+    // POST: Outputs the help message for jtar. 
+
     cout << "'jtar' saves many files together into a single tape or disk archive, and" << endl;
     cout << "can restore individual files from the archive." << endl;
     cout << "\nUsage: tar [OPTION]... [FILE]..." << endl;
@@ -130,7 +133,9 @@ void makeTarFile(int argc, char* argv[]) {
             string name(argv[i]);
             if (S_ISREG(buf.st_mode)) {
                 files.insert({name, REG});
+                cout << createFileName(name) << "\t" << createProtectionMode(name) << "\t" << createTimestamp(name) << "\t" << createFileSize(name) << endl;
             } else if (S_ISDIR(buf.st_mode)) {
+                cout << createFileName(name) << "\t" << createProtectionMode(name) << "\t" << createTimestamp(name) << "\t" << createFileSize(name) << endl;
                 files.insert({name, DIRECTORY});
             } else {
                 cerr << "jtar: '" << argv[i] << "' does not exist" << endl;
@@ -146,22 +151,50 @@ void makeTarFile(int argc, char* argv[]) {
     }
 }
 
-void getFileName() {
-    // PRE:
-    // POST:
+char* createFileName(string fileName) {
+    // PRE: String containing file name is passed in.
+    // POST: Returns a char array containing the file name.
 
+    char *name = new char[81];
+    strcpy(name, fileName.c_str());
+    return name;
+}
+
+char* createProtectionMode(string fileName) {
+    // PRE: String containing file name is passed in.
+    // POST: Returns a char array containing the protection mode of file.
+
+    struct stat buf;
+    char* pmode = new char[5];
+    lstat(fileName.c_str(), &buf);
+    string fileProtect = to_string(((buf.st_mode & S_IRWXU) >> 6)) 
+                       + to_string((buf.st_mode & S_IRWXG) >> 3) 
+                       + to_string(buf.st_mode & S_IRWXO);
+
+    strcpy(pmode, fileProtect.c_str());
+    return pmode;
+}
+
+char* createTimestamp(string fileName) {
+    // PRE: String containing file name is passed in.
+    // POST: Returns a char array containing the timestamp of the file.
+
+    struct stat buf;
+    char* timestamp = new char[16];
+    lstat(fileName.c_str(), &buf);
+    strftime(timestamp, 16, "%Y%m%d%H%M.%S", localtime(&buf.st_mtime));
+    return timestamp;
 
 }
 
-void getProtectionMode() {
-    // PRE:
-    // POST:
+char* createFileSize(string fileName) {
+    // PRE: String containing file name is passed in.
+    // POST: Returns a char array containing the file size.
 
-}
-
-void getTimestamp() {
-    // PRE:
-    // POST:
-
-
+    struct stat buf;
+    char *size = new char[7];
+    lstat(fileName.c_str(), &buf);
+    string fileSize = to_string(buf.st_size);
+    strcpy(size, fileSize.c_str());
+    return size;
 }
