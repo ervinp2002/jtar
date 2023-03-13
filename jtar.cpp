@@ -8,22 +8,23 @@ Implementation in C++
 #include <iostream>
 #include <string>
 #include <cstdlib>
-#include <cctype>
-#include <algorithm>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <utime.h>
 #include <fstream>
 #include <vector>
 #include <map>
-#include <filesystem>
 #include "file.cpp"
 using namespace std;
 
+// For initial command line parsing.
 enum VERIFY {CF, TF, XF, HELP, NONE};
-
 int parseArgs(char* argv[]);
+
+// For "--help" flag. 
 void helpMessage();
+
+// For "--cf" flag.
 void makeTarFile(int argc, char* argv[]);
 char* createFileName(string fileName);
 char* createProtectionMode(string fileName);
@@ -31,6 +32,8 @@ char* createTimestamp(string fileName);
 char* createFileSize(string fileName);
 bool isDirectory(string fileName);
 void obtainFiles(int argc, char* argv[], vector<string> &listing);
+void setUpFiles(const vector<string> &listing, vector<File> &tarTheseFiles);
+void build(vector<File> &tarTheseFiles, char* argv[]);
 
 int main(int argc, char* argv[]) {
     // PRE: Command-line arguments are used to specify how jtar will operate.
@@ -141,14 +144,13 @@ void makeTarFile(int argc, char* argv[]) {
 
         // Step 2: Obtain all of the files and directories to be placed into the tar file.
         obtainFiles(argc, argv, listing);
-        for (string file : listing) cout << file << endl;
 
-        // Step 3: Create a vector of File objects.
+        // Step 3: Fill the vector of File objects.
+        setUpFiles(listing, tarredFiles);
+
+        // Step 4: Build the actual tar file.
 
         
-
-
-
     } else {
         cerr << "jtar: Invalid format" << endl;
         cerr << "Try 'jtar --help for more information" << endl;
@@ -215,7 +217,7 @@ bool isDirectory(string fileName) {
 
 void obtainFiles(int argc, char* argv[], vector<string> &listing) {
     // PRE: Command line arguments contain valid file and directory names.
-    // POST: Lists all files and subdirectories in current directory.
+    // POST: Obtains all files and subdirectories in current directory.
 
     string name;
     struct stat buf;
@@ -253,3 +255,29 @@ void obtainFiles(int argc, char* argv[], vector<string> &listing) {
     }
 }
 
+void setUpFiles(const vector<string> &listing, vector<File> &tarTheseFiles) {
+    // PRE: Vector of filename strings is non-empty.
+    // POST: Fills a new vector of File objects.
+
+    for (string filename : listing) {
+        if (isDirectory(filename)) {
+            File tarredFile(createFileName(filename), createProtectionMode(filename), 
+                            createFileSize(filename), createTimestamp(filename));
+            tarredFile.flagAsDir();
+            tarTheseFiles.push_back(tarredFile);
+        } else {
+            File tarredFile(createFileName(filename), createProtectionMode(filename), 
+                            createFileSize(filename), createTimestamp(filename));
+            tarTheseFiles.push_back(tarredFile);
+        }  
+    }
+}
+
+void build(vector<File> &tarTheseFiles, char* argv[]) {
+    // PRE: Vector of File objects is filled.
+    // POST: Creates a tar file from the vector of File objects.
+
+    
+
+
+}
