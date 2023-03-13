@@ -33,7 +33,7 @@ char* createFileSize(string fileName);
 bool isDirectory(string fileName);
 void obtainFiles(int argc, char* argv[], vector<string> &listing);
 void setUpFiles(const vector<string> &listing, vector<File> &tarTheseFiles);
-void build(vector<File> &tarTheseFiles, char* argv[]);
+void build(vector<File> &tarTheseFiles, char* tarName);
 
 int main(int argc, char* argv[]) {
     // PRE: Command-line arguments are used to specify how jtar will operate.
@@ -149,7 +149,7 @@ void makeTarFile(int argc, char* argv[]) {
         setUpFiles(listing, tarredFiles);
 
         // Step 4: Build the actual tar file.
-
+        build(tarredFiles, argv[2]);
         
     } else {
         cerr << "jtar: Invalid format" << endl;
@@ -273,11 +273,47 @@ void setUpFiles(const vector<string> &listing, vector<File> &tarTheseFiles) {
     }
 }
 
-void build(vector<File> &tarTheseFiles, char* argv[]) {
+void build(vector<File> &tarTheseFiles, char* tarName) {
     // PRE: Vector of File objects is filled.
     // POST: Creates a tar file from the vector of File objects.
-
     
+    fstream tarFile(tarName, ios::out | ios::binary);
+    struct stat buf;
 
+    // Write out the size of the tar file. 
+    unsigned long tarSize = 0;
+    for (File tarThis : tarTheseFiles) {
+        lstat(tarThis.getName().c_str(), &buf);
+        if (S_ISDIR(buf.st_mode)) {
+            tarSize += sizeof(File);
+        } else {
+            tarSize += (sizeof(File) + (unsigned long) stoi(tarThis.getSize()));
+        }
+    }
+    tarFile.write((char*) &tarSize, sizeof(unsigned long));
 
+    // Write out the contents of each file.
+    fstream textContents;
+    for (File tarThis : tarTheseFiles) {
+        File temp(tarThis);
+        lstat(temp.getName().c_str(), &buf);
+        if (S_ISDIR(buf.st_mode)) {
+            tarFile.write((char*) &temp, sizeof(File));
+        } else {
+            char ch;
+            string relativePath = "./" + temp.getName();
+            tarFile.write((char*) &temp, sizeof(File));
+            textContents.open(relativePath, ios::in);
+            textContents.seekg(0, ios::beg);
+
+            while (textContents.get(ch)) {
+                tarFile.write((char*) &ch, sizeof(char));
+            }
+            
+            textContents.close();
+        }   
+    }
+    
+    tarFile.close();
 }
+
