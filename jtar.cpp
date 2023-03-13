@@ -307,7 +307,7 @@ void build(vector<File> &tarTheseFiles, char* tarName) {
             textContents.seekg(0, ios::beg);
 
             while (textContents.get(ch)) {
-                tarFile.write((char*) &ch, sizeof(char));
+                tarFile.put(ch);
             }
             
             textContents.close();
