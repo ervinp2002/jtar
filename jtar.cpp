@@ -16,12 +16,11 @@ Implementation in C++
 #include <fstream>
 #include <vector>
 #include <map>
+#include <filesystem>
 #include "file.cpp"
 using namespace std;
 
-typedef char String[100];
 enum VERIFY {CF, TF, XF, HELP, NONE};
-enum TYPE {REG, DIRECTORY};
 
 int parseArgs(char* argv[]);
 void helpMessage();
@@ -30,6 +29,8 @@ char* createFileName(string fileName);
 char* createProtectionMode(string fileName);
 char* createTimestamp(string fileName);
 char* createFileSize(string fileName);
+bool isDirectory(string fileName);
+void obtainFiles(int argc, char* argv[], vector<string> &listing);
 
 int main(int argc, char* argv[]) {
     // PRE: Command-line arguments are used to specify how jtar will operate.
@@ -122,26 +123,29 @@ void makeTarFile(int argc, char* argv[]) {
     // POST: Makes a tar file with the passed arguments.
 
     map<string, int> files;
+    vector<string> listing;
     vector<File> tarredFiles;
 
     if (argc >= 4) {
-        // Step 1: Determine the type of each argument passed after the tar file name.
+        // Step 1: Verify that valid files and directories were passed onto the command line.
         struct stat buf;
         struct utimbuf timebuf;
         for (int i = 3; i < argc; i++) {
             lstat(argv[i], &buf);
             string name(argv[i]);
-            if (S_ISREG(buf.st_mode)) {
-                files.insert({name, REG});
-                cout << createFileName(name) << "\t" << createProtectionMode(name) << "\t" << createTimestamp(name) << "\t" << createFileSize(name) << endl;
-            } else if (S_ISDIR(buf.st_mode)) {
-                cout << createFileName(name) << "\t" << createProtectionMode(name) << "\t" << createTimestamp(name) << "\t" << createFileSize(name) << endl;
-                files.insert({name, DIRECTORY});
-            } else {
+            if (!S_ISREG(buf.st_mode) && !S_ISDIR(buf.st_mode)) {
                 cerr << "jtar: '" << argv[i] << "' does not exist" << endl;
                 return;
             }
         }
+
+        // Step 2: Obtain all of the files and directories to be placed into the tar file.
+        obtainFiles(argc, argv, listing);
+        for (string file : listing) cout << file << endl;
+
+        // Step 3: Create a vector of File objects.
+
+        
 
 
 
@@ -198,3 +202,54 @@ char* createFileSize(string fileName) {
     strcpy(size, fileSize.c_str());
     return size;
 }
+
+bool isDirectory(string fileName) {
+    // PRE: String containing file name is passed in. 
+    // POST: Returns an boolean determining if the file is a directory or not
+
+    struct stat buf;
+    lstat(fileName.c_str(), &buf);
+    if (S_ISDIR(buf.st_mode)) return true;
+    else return false;
+}
+
+void obtainFiles(int argc, char* argv[], vector<string> &listing) {
+    // PRE: Command line arguments contain valid file and directory names.
+    // POST: Lists all files and subdirectories in current directory.
+
+    string name;
+    struct stat buf;
+    for (int i = 3; i < argc; i++) {
+        name = argv[i];
+        if (isDirectory(name)) {
+            // Add directory name to vector.
+            listing.push_back(name);
+            string command = "ls " + string(name) + " -1R > listOutput";
+
+            // Make a file containing a list of files in directory name.
+            system(command.c_str());
+            fstream list("listOutput", ios::in);
+            list.seekg(0, ios::beg);
+            
+            // Go through that file to add the other files.
+            string fromList;
+            string path = "";
+            list >> fromList;
+            while (!list.eof()) {
+                if (fromList[fromList.length() - 1] == ':') {
+                    path = fromList.substr(0, fromList.length() - 1);
+                } else {
+                    listing.push_back(path + "/" + fromList);
+                }
+
+                list >> fromList;
+            }
+
+            system("rm listOutput");
+
+        } else {
+            listing.push_back(name);
+        }
+    }
+}
+
