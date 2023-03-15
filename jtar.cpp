@@ -14,7 +14,8 @@ Implementation in C++
 #include <fstream>
 #include <vector>
 #include <map>
-#include "file.cpp"
+#include <sstream>
+#include "file.h"
 using namespace std;
 
 // For initial command line parsing.
@@ -24,7 +25,7 @@ int parseArgs(char* argv[]);
 // For "--help" flag. 
 void helpMessage();
 
-// For "--cf" flag.
+// For "-cf" flag.
 void makeTarFile(int argc, char* argv[]);
 char* createFileName(string fileName);
 char* createProtectionMode(string fileName);
@@ -35,16 +36,14 @@ void obtainFiles(int argc, char* argv[], vector<string> &listing);
 void setUpFiles(const vector<string> &listing, vector<File> &tarTheseFiles);
 void build(vector<File> &tarTheseFiles, char* tarName);
 
+// For "-tf" flag.
+void listContents(char* tarredFile);
+
 int main(int argc, char* argv[]) {
     // PRE: Command-line arguments are used to specify how jtar will operate.
     // POST: Executes based on the flags passed on command line.
 
     /* TODO: Parse command-line arguments and flag errors
-    •   jtar -cf tarfile file1 dir1... 
-        This specifies jtar to make a tar file named tarfile based
-        on the files or directories following the name of the tarfile. All files in this assignment will
-        be text files. No files will be symbolic or hard links.
-
     •   jtar -tf tarfile 
         This specifies jtar to list the names of all files that have packed into a tar
         file. It does not recreate anything.
@@ -62,7 +61,7 @@ int main(int argc, char* argv[]) {
             break;
 
         case TF:
-            cout << "tf flag" << endl;
+            listContents(argv[2]);
             break;
 
         case XF:
@@ -136,7 +135,8 @@ void makeTarFile(int argc, char* argv[]) {
         for (int i = 3; i < argc; i++) {
             lstat(argv[i], &buf);
             string name(argv[i]);
-            if (!S_ISREG(buf.st_mode) && !S_ISDIR(buf.st_mode)) {
+            fstream temp(argv[i], ios::in);
+            if (!S_ISREG(buf.st_mode) && !S_ISDIR(buf.st_mode) && !temp) {
                 cerr << "jtar: '" << argv[i] << "' does not exist" << endl;
                 return;
             }
@@ -265,10 +265,12 @@ void setUpFiles(const vector<string> &listing, vector<File> &tarTheseFiles) {
                             createFileSize(filename), createTimestamp(filename));
             tarredFile.flagAsDir();
             tarTheseFiles.push_back(tarredFile);
+            cout << tarredFile.getName() << "\t\t" << tarredFile.getPmode() << "\t\t" << tarredFile.getSize() << "\t\t" << tarredFile.getStamp() << endl; 
         } else {
             File tarredFile(createFileName(filename), createProtectionMode(filename), 
                             createFileSize(filename), createTimestamp(filename));
             tarTheseFiles.push_back(tarredFile);
+            cout << tarredFile.getName() << "\t\t" << tarredFile.getPmode() << "\t\t" << tarredFile.getSize() << "\t\t" << tarredFile.getStamp() << endl; 
         }  
     }
 }
@@ -277,35 +279,34 @@ void build(vector<File> &tarTheseFiles, char* tarName) {
     // PRE: Vector of File objects is filled.
     // POST: Creates a tar file from the vector of File objects.
     
-    fstream tarFile(tarName, ios::out | ios::binary);
+    fstream tarFile(tarName, ios::app | ios::binary);
     struct stat buf;
 
     // Write out the size of the tar file. 
-    unsigned long tarSize = 0;
-    for (File tarThis : tarTheseFiles) {
-        lstat(tarThis.getName().c_str(), &buf);
+    int tarSize = 0;
+    for (int i = 0; i < tarTheseFiles.size(); i++) {
+        lstat(tarTheseFiles[i].getName().c_str(), &buf);
         if (S_ISDIR(buf.st_mode)) {
             tarSize += sizeof(File);
         } else {
-            tarSize += (sizeof(File) + (unsigned long) stoi(tarThis.getSize()));
+            tarSize += (sizeof(File) + stoi(tarTheseFiles[i].getSize()));
         }
     }
-    tarFile.write((char*) &tarSize, sizeof(unsigned long));
+    tarFile.write((char*) &tarSize, sizeof(int));
+    cout << "tar size: " << tarSize << endl;
 
     // Write out the contents of each file.
-    fstream textContents;
-    for (File tarThis : tarTheseFiles) {
-        File temp(tarThis);
+    for (int i = 0; i < tarTheseFiles.size(); i++) {
+        File temp(tarTheseFiles[i]);
         lstat(temp.getName().c_str(), &buf);
         if (S_ISDIR(buf.st_mode)) {
             tarFile.write((char*) &temp, sizeof(File));
         } else {
             char ch;
-            string relativePath = "./" + temp.getName();
             tarFile.write((char*) &temp, sizeof(File));
-            textContents.open(relativePath, ios::in);
-            textContents.seekg(0, ios::beg);
 
+            fstream textContents(temp.getName(), ios::in);
+            textContents.seekg(0, ios::beg);
             while (textContents.get(ch)) {
                 tarFile.put(ch);
             }
@@ -317,3 +318,29 @@ void build(vector<File> &tarTheseFiles, char* tarName) {
     tarFile.close();
 }
 
+void listContents(char* tarredFile) {
+    // PRE: Valid tar file was passed onto the command line.
+    // POST: Lists all files and directories that were written into the tar file.
+
+    struct stat buf;
+    lstat(tarredFile, &buf);
+    if (!S_ISREG(buf.st_mode) && !S_ISDIR(buf.st_mode)) {
+        cerr << "jtar: '" << tarredFile << "' does not exist" << endl;
+    } else {
+        File temp;
+        int size;
+        fstream tarFile(tarredFile, ios::in | ios::binary);
+        tarFile.read((char*) &size, sizeof(int));
+        cout << size << endl;
+        while (tarFile.read((char*) &temp, sizeof(File)) && tarFile.good()) {
+            if (temp.isADir()) {
+                cout << temp.getName() << ": found a directory" << endl;
+            } else {
+                cout << temp.getName() << ": found a file" << endl;
+                tarFile.seekg(stoi(temp.getSize()), ios::cur);
+            }
+        }
+
+        tarFile.close();
+    }
+}
