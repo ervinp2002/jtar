@@ -39,15 +39,14 @@ void build(vector<File> &tarTheseFiles, char* tarName);
 // For "-tf" flag.
 void listContents(char* tarredFile);
 
+// For "-xf" flag.
+void untar(char* tarredFile);
+
 int main(int argc, char* argv[]) {
     // PRE: Command-line arguments are used to specify how jtar will operate.
     // POST: Executes based on the flags passed on command line.
 
     /* TODO: Parse command-line arguments and flag errors
-    •   jtar -tf tarfile 
-        This specifies jtar to list the names of all files that have packed into a tar
-        file. It does not recreate anything.
-
     •   jtar -xf tarfile 
         This specifies jtar to read a tar file, and recreate all the files saved in that
         tarfile. This includes making any directories that must exist to hold the files. The files thus
@@ -81,9 +80,7 @@ int main(int argc, char* argv[]) {
    /* TODO: Flag errors
     •   An invalid format. For example, the -cf option should always have an argc of at least 4,
         and the -tf and -xf options should always have an argc of at least 3.
-    •   Attempting to open a tar file which does not exist
     */
-
 
     return 0;
 }
@@ -279,20 +276,20 @@ void build(vector<File> &tarTheseFiles, char* tarName) {
     // PRE: Vector of File objects is filled.
     // POST: Creates a tar file from the vector of File objects.
     
-    fstream tarFile(tarName, ios::app | ios::binary);
+    fstream tarFile(tarName, ios::out | ios::binary);
     struct stat buf;
 
     // Write out the size of the tar file. 
-    int tarSize = 0;
+    unsigned long tarSize = 0;
     for (int i = 0; i < tarTheseFiles.size(); i++) {
         lstat(tarTheseFiles[i].getName().c_str(), &buf);
         if (S_ISDIR(buf.st_mode)) {
             tarSize += sizeof(File);
         } else {
-            tarSize += (sizeof(File) + stoi(tarTheseFiles[i].getSize()));
+            tarSize += (sizeof(File) + (unsigned long) stoi(tarTheseFiles[i].getSize()));
         }
     }
-    tarFile.write((char*) &tarSize, sizeof(int));
+    tarFile.write((char*) &tarSize, sizeof(unsigned long));
     cout << "tar size: " << tarSize << endl;
 
     // Write out the contents of each file.
@@ -328,19 +325,47 @@ void listContents(char* tarredFile) {
         cerr << "jtar: '" << tarredFile << "' does not exist" << endl;
     } else {
         File temp;
-        int size;
+        unsigned long size;
         fstream tarFile(tarredFile, ios::in | ios::binary);
-        tarFile.read((char*) &size, sizeof(int));
-        cout << size << endl;
+        tarFile.read((char*) &size, sizeof(unsigned long));
+        
         while (tarFile.read((char*) &temp, sizeof(File)) && tarFile.good()) {
             if (temp.isADir()) {
-                cout << temp.getName() << ": found a directory" << endl;
+                cout << temp.getName() << endl;
             } else {
-                cout << temp.getName() << ": found a file" << endl;
+                cout << temp.getName() << endl;
                 tarFile.seekg(stoi(temp.getSize()), ios::cur);
             }
         }
 
         tarFile.close();
     }
+}
+
+void untar(char* tarredFile) {
+    // PRE: "-xf" is passed onto the command line, followed by the tar file name.
+    // POST: Extracts all files contained in the tar file.
+
+    char ch;
+    File temp;
+    string command;
+    string chmod;
+    unsigned long size;
+    struct stat buf;
+    fstream tarFile(tarredFile, ios::in | ios::binary);
+    tarFile.read((char*) &size, sizeof(unsigned long));
+
+    while (tarFile.read((char*) &temp, sizeof(File)) && tarFile.good()) {
+        if (temp.isADir()) {
+
+        } else {
+            command = "touch " + temp.getName() + " -t " + temp.getStamp(); 
+            system(command.c_str());
+            fstream outputFile(temp.getName(), ios::out);
+            while (tarFile.get(ch) && outputFile.tellp() < (unsigned long) stoi(temp.getSize())) {
+                
+            }
+        }
+    }
+
 }
