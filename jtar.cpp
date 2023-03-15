@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
             break;
 
         case XF:
-            cout << "xf flag" << endl;
+            untar(argv[2]);
             break;
 
         case HELP:
@@ -129,10 +129,18 @@ void makeTarFile(int argc, char* argv[]) {
         // Step 1: Verify that valid files and directories were passed onto the command line.
         struct stat buf;
         struct utimbuf timebuf;
+
+        lstat(argv[2], &buf);
+        fstream checkTarNameExists(argv[2], ios::in);
+        if ((S_ISREG(buf.st_mode) || S_ISDIR(buf.st_mode)) && checkTarNameExists) {
+            cerr << "jtar: Tar file name matches an actual file" << endl; 
+        }
+
         for (int i = 3; i < argc; i++) {
             lstat(argv[i], &buf);
             string name(argv[i]);
             fstream temp(argv[i], ios::in);
+
             if (!S_ISREG(buf.st_mode) && !S_ISDIR(buf.st_mode) && !temp) {
                 cerr << "jtar: '" << argv[i] << "' does not exist" << endl;
                 return;
@@ -261,13 +269,11 @@ void setUpFiles(const vector<string> &listing, vector<File> &tarTheseFiles) {
             File tarredFile(createFileName(filename), createProtectionMode(filename), 
                             createFileSize(filename), createTimestamp(filename));
             tarredFile.flagAsDir();
-            tarTheseFiles.push_back(tarredFile);
-            cout << tarredFile.getName() << "\t\t" << tarredFile.getPmode() << "\t\t" << tarredFile.getSize() << "\t\t" << tarredFile.getStamp() << endl; 
+            tarTheseFiles.push_back(tarredFile); 
         } else {
             File tarredFile(createFileName(filename), createProtectionMode(filename), 
                             createFileSize(filename), createTimestamp(filename));
             tarTheseFiles.push_back(tarredFile);
-            cout << tarredFile.getName() << "\t\t" << tarredFile.getPmode() << "\t\t" << tarredFile.getSize() << "\t\t" << tarredFile.getStamp() << endl; 
         }  
     }
 }
@@ -354,18 +360,25 @@ void untar(char* tarredFile) {
     struct stat buf;
     fstream tarFile(tarredFile, ios::in | ios::binary);
     tarFile.read((char*) &size, sizeof(unsigned long));
-
+    
     while (tarFile.read((char*) &temp, sizeof(File)) && tarFile.good()) {
         if (temp.isADir()) {
-
-        } else {
-            command = "touch " + temp.getName() + " -t " + temp.getStamp(); 
+            command = "mkdir " + temp.getName();
             system(command.c_str());
+            cout << "Untarred directory: " << temp.getName() << endl;;
+        } else {
+            command = "touch -t " + temp.getStamp() + " ./" + temp.getName();
+            system(command.c_str());
+            command = "chmod " + temp.getPmode() + " ./" + temp.getName();
+            system(command.c_str());
+
             fstream outputFile(temp.getName(), ios::out);
-            while (tarFile.get(ch) && outputFile.tellp() < (unsigned long) stoi(temp.getSize())) {
-                
+            while (tarFile.get(ch) && outputFile.tellp() < (unsigned long) (stoi(temp.getSize()) - 1)) {
+                outputFile.put(ch);
             }
+
+            cout << "Untarred file: " << temp.getName() << endl;
+            outputFile.close();   
         }
     }
-
 }
