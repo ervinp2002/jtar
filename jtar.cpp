@@ -342,8 +342,13 @@ void untar(char* tarredFile) {
     tarFile.read((char*) &size, sizeof(unsigned long));
     
     while (tarFile.read((char*) &temp, sizeof(File)) && tarFile.good()) {
-        if (temp.isADir()) {
+        fstream checkIfExists(temp.getName(), ios::in);
+        lstat(temp.getName().c_str(), &buf);
+        if (temp.isADir() && !S_ISREG(buf.st_mode) && !S_ISDIR(buf.st_mode) && !checkIfExists) {
             command = "mkdir " + temp.getName();
+            system(command.c_str());
+        } else if (temp.isADir()) {
+            command = "cd " + temp.getName();
             system(command.c_str());
         } else {
             fstream outputFile(temp.getName(), ios::out);
