@@ -46,14 +46,6 @@ int main(int argc, char* argv[]) {
     // PRE: Command-line arguments are used to specify how jtar will operate.
     // POST: Executes based on the flags passed on command line.
 
-    /* TODO: Parse command-line arguments and flag errors
-    •   jtar -xf tarfile 
-        This specifies jtar to read a tar file, and recreate all the files saved in that
-        tarfile. This includes making any directories that must exist to hold the files. The files thus
-        created should be exactly like the original files. This means that they should have the same
-        access and modification times, and the same protection modes.
-    */
-
     switch (parseArgs(argv)) {
         case CF:
             makeTarFile(argc, argv);
@@ -76,11 +68,6 @@ int main(int argc, char* argv[]) {
             cerr << "Try 'jtar --help' for more information." << endl;
             break;
     } 
-
-   /* TODO: Flag errors
-    •   An invalid format. For example, the -cf option should always have an argc of at least 4,
-        and the -tf and -xf options should always have an argc of at least 3.
-    */
 
     return 0;
 }
@@ -129,12 +116,6 @@ void makeTarFile(int argc, char* argv[]) {
         // Step 1: Verify that valid files and directories were passed onto the command line.
         struct stat buf;
         struct utimbuf timebuf;
-
-        lstat(argv[2], &buf);
-        fstream checkTarNameExists(argv[2], ios::in);
-        if ((S_ISREG(buf.st_mode) || S_ISDIR(buf.st_mode)) && checkTarNameExists) {
-            cerr << "jtar: Tar file name matches an actual file" << endl; 
-        }
 
         for (int i = 3; i < argc; i++) {
             lstat(argv[i], &buf);
@@ -296,7 +277,6 @@ void build(vector<File> &tarTheseFiles, char* tarName) {
         }
     }
     tarFile.write((char*) &tarSize, sizeof(unsigned long));
-    cout << "tar size: " << tarSize << endl;
 
     // Write out the contents of each file.
     for (int i = 0; i < tarTheseFiles.size(); i++) {
@@ -365,20 +345,17 @@ void untar(char* tarredFile) {
         if (temp.isADir()) {
             command = "mkdir " + temp.getName();
             system(command.c_str());
-            cout << "Untarred directory: " << temp.getName() << endl;;
         } else {
-            command = "touch -t " + temp.getStamp() + " ./" + temp.getName();
-            system(command.c_str());
-            command = "chmod " + temp.getPmode() + " ./" + temp.getName();
-            system(command.c_str());
-
             fstream outputFile(temp.getName(), ios::out);
             while (tarFile.get(ch) && outputFile.tellp() < (unsigned long) (stoi(temp.getSize()) - 1)) {
                 outputFile.put(ch);
             }
 
-            cout << "Untarred file: " << temp.getName() << endl;
-            outputFile.close();   
+            outputFile.close(); 
+            command = "chmod " + temp.getPmode() + " ./" + temp.getName();
+            system(command.c_str());            
+            command = "touch -t " + temp.getStamp() + " ./" + temp.getName();
+            system(command.c_str());    
         }
     }
 }
