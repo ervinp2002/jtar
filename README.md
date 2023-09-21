@@ -1,92 +1,86 @@
-# jtar
+# The jtar Software 
 
+## Designed by
+Ervin Pangilinan
 
+## Semester 
+Spring 2023
 
-## Getting started
+## Course 
+CSC 310 - File Structures & Advanced Algorithms 
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Language Used 
+C++
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+## Objective
 
-## Add your files
+Write a version of the Linux systems utility tar that will create a tar file, 
+unpack a tar file, and list the files packed into a tar file.
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+A tar file is a file that holds enough information to recreate each file on the 
+command line. If the file is a directory, then it holds enough information to 
+recreate all files reachable from that directory.
 
-```
-cd existing_repo
-git remote add origin http://anvil.cs.mercer.edu/pangilinan_ee/jtar.git
-git branch -M main
-git push -uf origin main
-```
+### Compilation
+    c++ jtar.cpp
 
-## Integrate with your tools
+### File Class
+The jtar software uses a custom File class for storing metadata on each file
+and directory. Every File object has the following attributes:
 
-- [ ] [Set up project integrations](http://anvil.cs.mercer.edu/pangilinan_ee/jtar/-/settings/integrations)
+1. name  (A char array of length 81 for storing the file name)
+2. pmode (A char array of length 5 for storing the numerical shorthand of RWX accesses)
+3. size  (A char array of length 7 for storing the number of bytes in the file)
+4. stamp (A char array of length 16 for storing the canonical time of the file's modification time)
 
-## Collaborate with your team
+Additionally, its constructor can be called in 3 ways: An empty constructor with 
+everything set to null, a constructor with attributes passed into it as parameters,
+and a reference to another File object to create a deep copy.
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+### Command Line Syntax
+The jtar software has 4 different command line flags that can be called upon execution.
 
-## Test and Deploy
+    jtar -cf tarfile file1 dir1... 
+This specifies jtar to make a tar file named tarfile based on the files or directories 
+following the name of the tarfile.
 
-Use the built-in continuous integration in GitLab.
+    jtar -tf tarfile 
+This specifies jtar to list the names of all files that have packed into a tar file.
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+    jtar -xf tarfile 
+This specifies jtar to read a tar file, and recreate all the files saved in that tar file.
 
-***
+    jtar --help 
+If the help option is present on the command line, the program should print a description 
+of the three options above, and exit.
 
-# Editing this README
+### Creating the Tar File
+This is done in 4 steps. First, jtar verifies that valid files and directories were passed
+onto the command line upon calling the "-cf" command. This is done by checking if the
+filename names a regular file or a directory and seeing if its respective file pointer is 
+good. For invalid file names and directories, jtar will quit execution. 
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Secondly, jtar obtains all files and directories to be placed into the tar file. This is
+once again done by parsing through the passed arguments of file and directory names. Similar
+to step 1, jtar will check if the argument is a regular file or directory. If it's a regular
+file, jtar will count that as a file to place into the tar file. If it's a directory, jtar will
+call an "ls" command on that directory and feed the output to a text file, and parse through the
+text file and add the relative path name of the file as a file to place in the tar file. Knowing
+which file to place in the tar file is done by adding it to a vector of file names.
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Next, jtar creates a vector of File objects by iterating through the vector of file names.
+On each iteration, jtar will call the parameterized constructor of the File class and fetch
+the metadata on each file that matches the parameters of the constructor.
 
-## Name
-Choose a self-explaining name for your project.
+Finally, jtar creates a binary file that writes out the File objects from the vector. If the File
+object is a directory, jtar will iterate to the next object in the vector. For regular files, the
+File object is followed by writing out the contents in the actual file itself into the binary file.
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+### Extracting the Files
+Recreating the tarred files is done in the following manner. First, jtar reads in a File object and determines
+if the File object is a regular file or directory. For directories, jtar then determines if the
+directory is already present in the current directory. If present, jtar calls a "cd" command into
+that directory. If not present, then jtar calls a "mkdir" command to create a new directory. For files,
+jtar opens a filestream for output and writes out the next bytes, corresponding to the file size. This
+is done until the every byte in the tar file has been read.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
